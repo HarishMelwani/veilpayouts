@@ -7,12 +7,20 @@ import { ProviderInterface, RpcProvider } from "starknet";
 export const addrSTRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 
 // Frontend RPC providers, indexed. The STRK20 privacy pool lives on Mainnet (0)
-// and Sepolia (2); index 1 is a spare public testnet endpoint. NEXT_PUBLIC_PROVIDER_URL
-// is your Alchemy key (see .env.example).
+// and Sepolia (2); index 1 is a spare public testnet endpoint.
+//
+// No API key required: Mainnet uses the public Lava endpoint (from the sprint's
+// Day-0 doc) and Sepolia uses public Blast. If NEXT_PUBLIC_PROVIDER_URL (an
+// Alchemy key) is set, the Alchemy endpoints are used instead.
+const alchemyOr = (network: string, fallback: string) =>
+    process.env.NEXT_PUBLIC_PROVIDER_URL
+        ? `https://starknet-${network}.g.alchemy.com/starknet/version/rpc/v0_10/` + process.env.NEXT_PUBLIC_PROVIDER_URL
+        : fallback;
+
 export const myFrontendProviders: ProviderInterface[] = [
-    new RpcProvider({ nodeUrl: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/" + process.env.NEXT_PUBLIC_PROVIDER_URL }),
+    new RpcProvider({ nodeUrl: alchemyOr("mainnet", "https://rpc.starknet.lava.build") }),
     new RpcProvider({ nodeUrl: "https://starknet-testnet.public.blastapi.io/rpc/v0_7" }),
-    new RpcProvider({ nodeUrl: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/" + process.env.NEXT_PUBLIC_PROVIDER_URL })];
+    new RpcProvider({ nodeUrl: alchemyOr("sepolia", "https://starknet-sepolia.public.blastapi.io/rpc/v0_7") })];
 
 // ─── Example anonymizer (echo helper) ───────────────────────────────────────
 // DEMO CONTRACT: StrkInvokeHelper (cairo/src/lib.cairo) just round-trips STRK
