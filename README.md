@@ -1,66 +1,73 @@
-# VeilPoker ♠️
+# VeilPayouts 🎁
 
-**Provably fair Texas Hold'em on Starknet — chips you can't trace, cards nobody can see, a deal nobody can rig.**
+**Private business payouts on Starknet — pay anyone by link, they claim into a shielded balance.**
 
-VeilPoker is a privacy-native poker table built on [STRK20](https://strk20.starknet.io/), Starknet's privacy layer. It answers the oldest question in online poker — *"how do I know the house isn't cheating?"* — with cryptography instead of trust:
+VeilPayouts is a privacy-native payouts rail built on [STRK20](https://strk20.starknet.io/). Companies pay people **without collecting wallet addresses and without exposing recipient balances**. The recipient gets a claim link; clicking it (once registered) lands the payout directly in their **shielded STRK20 balance** as an encrypted note — no public on-chain link between the payer, the amount, and the payee.
 
-- **Chips are shielded.** You shield STRK into the privacy pool. Your buy-in, your stack, your winnings move as encrypted notes. Nobody can link your seat to your wallet.
-- **Cards are private.** Hole cards are dealt under a **commit-reveal scheme** with a dealer seed that no single party controls. Even the table contract cannot see your hand before you reveal it.
-- **The deal is provably fair.** The deck is derived from a seed that mixes every player's random commit, so cheating is *mathematically impossible*, not just disincentivized.
+It solves the gap every STRK20 app hits: **you cannot privately transfer to someone who hasn't registered a viewing key yet.** VeilPayouts escrows the funds behind a secret, hands the secret off-chain as a claim link, and the recipient claims it into their own note the moment they're ready.
 
-Built for the [STRK20 Private Sprint](https://strk20.starknet.io/hackathon) (Aug 14–31, 2026).
+Built for the [STRK20 Private Sprint](https://strk20.starknet.io/hackathon) (Aug 14–31, 2026) — **IDEA-10, Business payouts API**.
 
 ---
+
+## The flow
+
+```
+Company dashboard          Recipient
+─────────────────          ─────────
+1. Create payout ──► escrow STRK behind a secret (commitment on-chain)
+2. Get claim link ──► share off-chain (email / chat / QR)
+3.                   ◄── click link, connect wallet (register if new)
+4.                   ◄── claim: prove the secret → payout lands as a
+                         shielded note (no public leg)
+5. Refund (optional) ──► unclaimed funds returned after expiry
+```
+
+- **Payer side**: shield STRK into the pool, then a private transfer funds the escrow. Public observers see a pool→escrow transfer, never *who* paid *whom* or *how much*.
+- **Recipient side**: no wallet address needed up front — just a link. The claim is a private note; the recipient's balance stays shielded until they choose to unshield.
+- **Business side**: a dashboard lists payouts (status: pending / claimed / expired) without ever revealing balances or the payer↔payee link on-chain.
 
 ## What is private, what is not
 
-We are precise about this — see [docs/PRIVACY-MODEL.md](docs/PRIVACY-MODEL.md) for the full threat model.
+Precise hidden-vs-visible breakdown: see [docs/PRIVACY-MODEL.md](docs/PRIVACY-MODEL.md).
 
 | Public | Private |
 |---|---|
-| Your **shielding deposit** (address, token, amount) | Note-to-note transfers: amounts and parties |
-| Your **unshield withdrawal** (destination, amount) | Which deposit a withdrawal came from |
-| Buy-in amount sent to a table escrow | That you are the one playing / your table stack |
-| Pot size at showdown | Who folded, who called, your hole cards |
-| Final hand outcome | Winner's link back to their public wallet |
+| The **shield deposit** (address, token, amount — STRK20 design) | The **payout amount** and **who funded it** (private transfer) |
+| The **escrow commitment hash** (reveals nothing — Poseidon of the secret) | The **secret / claim link** (off-chain) |
+| That a **claim happened** (a nullifier + open note) | **Who claimed** and **to whose balance it landed** |
+| The recipient's **unshield**, if they choose to cash out | Which payout a withdrawal came from |
 
-**Claim:** identity privacy for players, card privacy until showdown, and provable fairness of the deal. **Never claim:** that deposits or withdrawals are hidden — shielding is not private, what you do afterwards is.
-
----
+**Claim:** payout amounts, payer identity, payee identity, and the payer↔payee link are private. **Never claim:** the shield deposit or a final unshield are hidden.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Next.js frontend (wallet connect, table UI, game client)    │
-│  • WalletAccountV6 via wallet-standard (Ready / Xverse)      │
-│  • STRK20 actions: deposit / transfer / withdraw / invoke    │
+│  Next.js frontend (two sides)                                │
+│  • Business: create payouts, dashboard, refunds              │
+│  • Recipient: claim links, shielded balance view             │
+│  WalletAccountV6 via wallet-standard (Ready / Xverse)        │
 └──────────────┬──────────────────────────────┬───────────────┘
-               │ shield / unshield            │ private tx + invoke
+               │ shield / unshield / transfer │ private transfer + invoke
                ▼                              ▼
 ┌──────────────────────────┐   ┌──────────────────────────────┐
-│  STRK20 privacy pool     │   │  VeilTable (Cairo contract)  │
-│  (mainnet 0x0403…812a)   │◄──┤  seat registry, pot ledger,  │
-│  encrypted notes,        │   │  commit-reveal dealing,      │
-│  discovery + proving     │   │  payout via open notes       │
+│  STRK20 privacy pool     │   │  PayoutEscrow (Cairo helper) │
+│  (mainnet 0x0403…812a)   │◄──┤  commitment → claim state    │
+│  encrypted notes         │   │  machine, expiry, refunds    │
 └──────────────────────────┘   └──────────────────────────────┘
 ```
 
-- **Money layer:** the STRK20 pool. Shield to buy in, private-transfer to seat, winnings paid as private notes, unshield to cash out.
-- **Game layer:** `VeilTable`, a Cairo contract (the "anonymizer" in STRK20 terms) that holds the pot as an open note and settles winners through the pool.
-- **Fairness layer:** commit-reveal dealing. Every player commits a random nonce, the dealer seed is `hash(all commits)`, the deck is derived deterministically from it, and each player's cards are committed on-chain before the deal — verifiable by anyone after reveal.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
-
----
+- **Money layer:** the STRK20 pool — shield to fund, private transfer to escrow, claim as a private note, unshield to cash out.
+- **Escrow layer:** `PayoutEscrow`, a stateful Cairo **anonymizer** in the documented `privacy_invoke` pattern — `Deposit` stores a commitment keyed by `poseidon(secret)`; `Claim` verifies the secret, marks it claimed, and returns an `OpenNoteDeposit` crediting the claimer's note. Adapted from the [STRK20-by-example escrow example](https://strk20-by-example.org/helpers/escrow), extended with expiry + refund.
+- **Fairness:** commitments are domain-separated (`ESCROW_COMMITMENT_TAG:V1`); double-claims revert; funds are pullable by the pool only.
 
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `src/` | Next.js 16 frontend (wallet connect, table, game client) |
-| `cairo/` | Cairo contracts — `VeilTable` (poker table / anonymizer) |
-| `src/game/` | Poker engine: deck, shuffle, hand evaluation, seat logic |
+| `src/` | Next.js 16 frontend (business dashboard + recipient claim flow) |
+| `cairo/` | `PayoutEscrow` — the stateful anonymizer contract |
 | `docs/` | Architecture, privacy model, integration plan |
 | `strk20.json` | Sprint submission — mainnet txs, contracts, demo |
 
@@ -76,17 +83,17 @@ Needs a privacy-enabled Starknet wallet — [Ready](https://www.ready.co/) works
 
 ## Sprint status
 
-- [x] Repository scaffolded, entry registered (registry PR)
-- [ ] Day 0: first mainnet pool transactions (shield / transfer / unshield)
+- [x] Idea locked (IDEA-10), repo rebranded, entry prepared
 - [ ] STRK20 integration plan (via `strk20-privacy-integration` skill)
-- [ ] `VeilTable` Cairo contract: seats, commit-reveal dealing, pot, payouts
-- [ ] Game client: heads-up Hold'em table, betting rounds, hand evaluation
+- [ ] Day 0: first mainnet pool transactions (shield / transfer / unshield)
+- [ ] `PayoutEscrow` Cairo contract: commitments, claim, expiry, refund
+- [ ] Frontend: create-payout flow, claim-link landing, dashboard
 - [ ] Mainnet: 3 pool txs in `strk20.json`, live demo, demo video
 
 ## Links
 
-- [STRK20 privacy pool](https://github.com/starkware-libs/starknet-privacy) · [STRK20 by example](https://strk20-by-example.org/) · [Starter kit](https://github.com/Akashneelesh/strk20-starter-kit) (MIT, forked as the frontend base)
-- Sprint: [Private Sprint](https://strk20.starknet.io/hackathon) · [IDEAS.md / RFP-03](https://github.com/starkience/strk20-hackathon/blob/main/IDEAS.md)
+- [STRK20 privacy pool](https://github.com/starkware-libs/starknet-privacy) · [STRK20 by example](https://strk20-by-example.org/) · [Escrow helper reference](https://strk20-by-example.org/helpers/escrow) · [Starter kit](https://github.com/Akashneelesh/strk20-starter-kit) (MIT, frontend base)
+- Sprint: [Private Sprint](https://strk20.starknet.io/hackathon) · [IDEAS.md / IDEA-10](https://github.com/starkience/strk20-hackathon/blob/main/IDEAS.md)
 
 ## License
 

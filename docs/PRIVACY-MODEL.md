@@ -1,47 +1,49 @@
-# VeilPoker Privacy Model
+# VeilPayouts Privacy Model
 
-> Written to be precise, because overclaiming privacy is the fastest way to lose points on integration depth. This document states exactly what VeilPoker hides, what it does not, and what an observer can actually learn.
+> Precise, because overclaiming privacy is the fastest way to lose points on integration depth. This states exactly what VeilPayouts hides, what it does not, and what an observer can learn.
 
-## Hidden vs visible, transaction by transaction
+## Hidden vs visible, step by step
 
 | Step | On-chain visibility | Notes |
 |---|---|---|
-| **1. Shield** (deposit STRK into pool) | PUBLIC: depositor address, token, amount | STRK20 design — deposits are screened by a compliance provider. Shielding is not private. |
-| **2. Buy-in** (private transfer to table escrow) | PRIVATE: note-to-note, no amount, no parties | The transfer is encrypted; only the table's viewing key can open the note. |
-| **3. Nonce commits + deal** | PUBLIC: commitments, community cards, deck seed | Fairness data must be public to be verifiable. Commitments reveal nothing about the nonces (Poseidon). |
-| **4. Hole cards** | PUBLIC: commitment of each player's two cards | `poseidon(card, seat, seed)` — preimage is secret until reveal. |
-| **5. Bets / pot** | PARTIAL: aggregate pot size public; per-player contributions private | The table contract records `(seat, amount)` in private state; the pot as an open note shows an amount but not who contributed what. |
-| **6. Reveal** | PUBLIC: nonces, cards | Required for provable fairness. |
-| **7. Settlement** | PRIVATE: winner receives a private note via the pool | Nobody can see which seat got the pot, and the seat itself is unlinkable to a wallet. |
-| **8. Unshield** | PUBLIC: destination + amount | Which deposit it came from is hidden — a winner can unshield to a fresh wallet and the trail stops at the pool. |
+| **1. Creator shields STRK** | PUBLIC: depositor address, token, amount | STRK20 design — deposits are screened (FPI) and public. Done ahead of time, unlinked to any payout. |
+| **2. Fund escrow** (private transfer → escrow) | PRIVATE: note-to-note, no amount, no parties | The payout amount and the payer's identity never hit a public leg. |
+| **3. Escrow Deposit** (invoke) | PUBLIC: the commitment hash only | `poseidon(ESCROW_COMMITMENT_TAG, secret)` — preimage is secret; the hash reveals nothing. |
+| **4. Claim link shared** | OFF-CHAIN | The secret travels by link (email/chat/QR). Any bearer can claim — by design. |
+| **5. Recipient claims** (open note + invoke) | PARTIAL: an open-note amount + a nullifier | The open-note amount is plaintext by STRK20 design (measured at execution); **who** claimed it and **whose balance** it landed in are hidden. |
+| **6. Recipient unshields** | PUBLIC: destination + amount | Which payout funded the withdrawal is hidden — the trail stops at the pool. |
 
 ## What an observer can actually learn
 
-- **Identity:** shielded address, unshield destination, and (public) deposit amounts.
-- **Table activity:** that a game is running, the pot size trajectory, deal timestamps.
-- **Correlation risks (we warn users):** a distinctive buy-in amount shortly before a distinctive deposit is correlatable; timing of bets relative to public deposits can leak. Claim identity privacy, never claim amount privacy for the deposit/unshield steps.
+- That **a payout product is in use** (deposits, escrow commitments, claims).
+- The **aggregate claim amount** of each escrow interaction (open-note plaintext).
+- **Timing** of deposits vs claims.
+- **Correlation risks (we warn users):** a distinctive shield amount shortly before a distinctive claim is correlatable; shield ahead of time and claim later. Claim identity privacy, never amount privacy for open notes or the public legs.
 
 ## What is NOT claimed
 
-- ❌ Deposit shielding is private — it is not (STRK20 design).
-- ❌ Bet amounts are private — the pot aggregate is public.
-- ❌ The winner is anonymous to the *other players at the table* — they see the winning cards and seat at showdown (that's poker).
-- ❌ Cards are encrypted pool notes — they are protected by commit-reveal, not note encryption.
+- ❌ The shield deposit is private — it is not (STRK20 design, screened by FPI).
+- ❌ The claim amount is private — open notes are plaintext by design.
+- ❌ The final unshield is private — withdrawals are public legs.
+- ❌ The claim link is tamper-proof — it's a bearer secret; treat it like cash. A leaked link lets anyone claim (the payout goes to the first claimant).
 
 ## What IS claimed
 
-- ✅ **Identity privacy:** no on-chain observer can link a seat/wallet to a player's pool activity.
-- ✅ **Card privacy:** until reveal, no party — including the table contract and the dealer — knows a player's hole cards.
-- ✅ **Provable fairness:** the deck is derivable from the published seed and commitments; any attempt to rig the deal is publicly detectable.
-- ✅ **Private payouts:** winnings arrive as encrypted notes; their link to a public wallet exists only if the winner chooses to unshield.
+- ✅ **Payout amounts are private** — the escrow funding is a private transfer; no public leg names the amount.
+- ✅ **Payer identity is private** — observers see pool → escrow, never who initiated it.
+- ✅ **Payee identity is private** — the claim credits a shielded note; only the claimant's viewing key can open it.
+- ✅ **The payer↔payee link is private** — nothing on-chain connects the creator to the claimer.
+- ✅ **Recipients need no registration to be paid** — the escrow + claim-link pattern solves STRK20's "must be registered to receive" gap.
 
 ## Trust assumptions
 
-1. **STRK20 pool** is honest (the sprint's whole premise).
-2. **VeilTable contract** is verifiable open source; its dealing logic is deterministic and replayed client-side for verification.
-3. **Client software** does not exfiltrate nonces/cards (standard assumption for any dapp; the on-chain trail is clean regardless).
+1. **STRK20 pool** is honest (the sprint's premise).
+2. **PayoutEscrow** is verifiable open source; only the pool (`privacy_contract`) can drive it — nobody can withdraw escrowed funds directly.
+3. **Claim links** are transported securely by the app (HTTPS); the secret is never stored in the app's backend.
+4. **Client software** does not exfiltrate secrets (standard dapp assumption; the on-chain trail is clean regardless).
 
 ## Future work (post-sprint)
 
-- Stealth-account seats so even *which contract* receives the buy-in is unlinkable.
-- Viewing-key proofs for selective disclosure (e.g., prove you hold a stack without revealing it).
+- Expiry + auto-refund as first-class escrow operations (sprint stretch goal).
+- Viewing-key proofs for selective disclosure ("prove you were paid without revealing how much").
+- Payouts to email/phone identifiers with onboarding that doesn't require understanding wallets.

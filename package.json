@@ -1,8 +1,8 @@
 {
-  "name": "veilpoker",
+  "name": "veilpayouts",
   "version": "0.1.0",
   "private": true,
-  "description": "Provably fair Texas Hold'em on Starknet STRK20 - shielded chips, private cards, verifiable deals",
+  "description": "Private business payouts on Starknet STRK20 - pay anyone by link, they claim into a shielded balance",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
