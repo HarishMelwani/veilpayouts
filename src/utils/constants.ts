@@ -10,8 +10,9 @@ export const addrSTRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab0720185
 // and Sepolia (2); index 1 is a spare public testnet endpoint.
 //
 // No API key required: Mainnet uses the public Lava endpoint (from the sprint's
-// Day-0 doc) and Sepolia uses public Blast. If NEXT_PUBLIC_PROVIDER_URL (an
-// Alchemy key) is set, the Alchemy endpoints are used instead.
+// Day-0 doc) and Sepolia uses PublicNode (verified live). If
+// NEXT_PUBLIC_PROVIDER_URL (an Alchemy key) is set, the Alchemy endpoints are
+// used instead.
 const alchemyOr = (network: string, fallback: string) =>
     process.env.NEXT_PUBLIC_PROVIDER_URL
         ? `https://starknet-${network}.g.alchemy.com/starknet/version/rpc/v0_10/` + process.env.NEXT_PUBLIC_PROVIDER_URL
@@ -19,8 +20,8 @@ const alchemyOr = (network: string, fallback: string) =>
 
 export const myFrontendProviders: ProviderInterface[] = [
     new RpcProvider({ nodeUrl: alchemyOr("mainnet", "https://rpc.starknet.lava.build") }),
-    new RpcProvider({ nodeUrl: "https://starknet-testnet.public.blastapi.io/rpc/v0_7" }),
-    new RpcProvider({ nodeUrl: alchemyOr("sepolia", "https://starknet-sepolia.public.blastapi.io/rpc/v0_7") })];
+    new RpcProvider({ nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" }),
+    new RpcProvider({ nodeUrl: alchemyOr("sepolia", "https://starknet-sepolia-rpc.publicnode.com") })];
 
 // ─── Example anonymizer (echo helper) ───────────────────────────────────────
 // DEMO CONTRACT: StrkInvokeHelper (cairo/src/lib.cairo) just round-trips STRK
