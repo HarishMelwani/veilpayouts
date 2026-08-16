@@ -19,6 +19,25 @@ function normalizeId(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// "0.10.3" -> [0, 10, 3]; tolerates missing segments and junk.
+function parseVersion(v: string): number[] {
+  return String(v).split(".").map((p) => parseInt(p, 10) || 0);
+}
+
+// Numeric a >= b on dotted versions (wallet API versions are semver-ish strings).
+function versionGte(a: string, b: string): boolean {
+  const x = parseVersion(a);
+  const y = parseVersion(b);
+  const len = Math.max(x.length, y.length);
+  for (let i = 0; i < len; i++) {
+    const xi = x[i] ?? 0;
+    const yi = y[i] ?? 0;
+    if (xi > yi) return true;
+    if (xi < yi) return false;
+  }
+  return true;
+}
+
 export default function SelectWallet({ variant = "ctaBig" }: { variant?: "nav" | "ctaBig" }) {
 
   const setMyWallet = useStoreWallet(state => state.setMyStarknetWalletObject);
@@ -86,6 +105,15 @@ export default function SelectWallet({ variant = "ctaBig" }: { variant?: "nav" |
       console.log("change Provider index to :", myFrontendProviderIndex);
     }
     setWalletApi(await walletV6.supportedSpecs(selectedWallet));
+    // STRK20 capability = Wallet API >= 0.10.3. Version query only - never a
+    // balance read, which would prompt the user for data we don't need.
+    try {
+      const apiVersions = (await walletV6.supportedWalletApi(selectedWallet)) as string[];
+      const capable = Array.isArray(apiVersions) && apiVersions.some((v) => versionGte(v, "0.10.3"));
+      useStoreWallet.getState().setStrk20Capable(capable);
+    } catch {
+      useStoreWallet.getState().setStrk20Capable(false);
+    }
   }
 
   // Open the wallet picker so the user can choose (Ready, Xverse, ...).

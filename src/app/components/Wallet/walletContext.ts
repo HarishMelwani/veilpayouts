@@ -25,6 +25,10 @@ export interface WalletState {
     setSelectWalletUI: (displaySelectWalletUI: boolean) => void,
     walletApiList: string[],
     setWalletApiList: (version: string[]) => void,
+    // Whether the connected wallet speaks the STRK20 Wallet API (>= 0.10.3).
+    // Detected via supportedWalletApi, never via a balance probe.
+    strk20Capable: boolean,
+    setStrk20Capable: (capable: boolean) => void,
     selectedApiVersion: string,
     setSelectedApiVersion: (version: string) => void,
 
@@ -49,6 +53,8 @@ export const useStoreWallet = create<WalletState>()(set => ({
     setSelectWalletUI: (displaySelectWalletUI: boolean) => { set(state => ({ displaySelectWalletUI })) },
     walletApiList: [],
     setWalletApiList: (walletApi: string[]) => { set(state => ({ walletApiList: walletApi })) },
+    strk20Capable: false,
+    setStrk20Capable: (capable: boolean) => { set(state => ({ strk20Capable: capable })) },
     selectedApiVersion: "default",
     setSelectedApiVersion: (selectedApiVersion: string) => { set(state => ({ selectedApiVersion })) },
     }));

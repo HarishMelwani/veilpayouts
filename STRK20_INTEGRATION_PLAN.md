@@ -40,7 +40,7 @@ Honest limits: the claim amount is public via the open note (STRK20 design — m
 - Test wallet: Ready extension.
 - Cairo: Scarb + Starknet Foundry (`snforge`/`sncast`) for the escrow contract; audit before mainnet.
 
-## 5. Phase 1 — first shielded flow (starter plumbing is already wired)
+## 5. Phase 1 — first shielded flow ✅ done 2026-08-16 (code); manual wallet checks + mainnet proof pending
 
 1. Keep the starter's connect flow (`SelectWallet.tsx`) — get-starknet v6, `eip1193Adapters: []`, `WalletAccountV6.connect`.
 2. Keep shield / private transfer / unshield actions (`WalletAccountV6Tag.tsx`); they are the app's money primitives.
@@ -77,6 +77,8 @@ Honest limits: the claim amount is public via the open note (STRK20 design — m
 - We own review, audit, deployment, and maintenance of `PayoutEscrow`. The claim link is a bearer secret — treat it like cash; a leaked link lets anyone claim.
 
 ## 10. Open items to re-verify at build time
+
+- **Mainnet proof blocked (eligibility):** no mainnet STRK available yet. Chasing via the sprint Telegram group / a CEX withdrawal / a builder gas grant; step-by-step runbook in `docs/MAINNET-DAY-0.md`. The three pool txs will be done through the app itself once Phase 2 ships.
 
 - get-starknet 6.0.2 → 6.0.4 drift; `starknet` next is 10.7.0 (we pin 10.4.0 — confirm no STRK20 fixes we need were added later).
 - Xverse dapp-facing Wallet API status (Ready confirmed).

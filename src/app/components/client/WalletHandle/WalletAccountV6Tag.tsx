@@ -148,6 +148,7 @@ export default function WalletAccountV6Tag() {
   const myWalletAccount = useStoreWallet((state) => state.myWalletAccount);
   const connectedAddress = useStoreWallet((state) => state.address);
   const isConnected = useStoreWallet((state) => state.isConnected);
+  const strk20Capable = useStoreWallet((state) => state.strk20Capable);
   const chain = useStoreWallet((state) => state.chain);
   const [chainIdWA, setChainIdWA] = useState<string>(chain);
 
@@ -488,7 +489,7 @@ export default function WalletAccountV6Tag() {
     TabKey,
     { label: string; value: string; token: string; hint: string; cta: string; onRun: () => void; result: ActionResult | null; disabled: boolean }
   > = {
-    shield: { label: "You're shielding", value: "10", token: "STRK", hint: "Deposit into the privacy pool", cta: "Shield", onRun: handleShield, result: resultShield, disabled: !isStrk20Network },
+    shield: { label: "You're shielding", value: "10", token: "STRK", hint: "Two steps: approve, then deposit into the pool", cta: "Shield", onRun: handleShield, result: resultShield, disabled: !isStrk20Network },
     send: { label: "You're sending - to self", value: "1", token: "STRK", hint: "Private in-pool transfer", cta: "Self transfer", onRun: handleSelfTransfer, result: resultTransfer, disabled: !isStrk20Network },
     unshield: { label: "You're unshielding", value: "1", token: "STRK", hint: "Withdraw to your account", cta: "Unshield", onRun: handleUnshield, result: resultUnshield, disabled: !isStrk20Network },
     echo: { label: "Echo invoke round-trip", value: "5", token: "STRK", hint: "Withdraw → helper → refill open note", cta: "Run echo", onRun: handleComplex, result: resultComplex, disabled: !isStrk20Network || !hasEchoHelper },
@@ -541,6 +542,14 @@ export default function WalletAccountV6Tag() {
       {!isStrk20Network && (
         <div className={styles.warn}>
           STRK20 actions require Mainnet or Sepolia - switch your wallet network.
+        </div>
+      )}
+
+      {isConnected && !strk20Capable && (
+        <div className={styles.warn}>
+          This wallet does not support STRK20 privacy actions. Install the{" "}
+          <a href="https://www.ready.co/" target="_blank" rel="noreferrer">Ready</a>{" "}
+          extension to shield, transfer, and unshield privately.
         </div>
       )}
 
