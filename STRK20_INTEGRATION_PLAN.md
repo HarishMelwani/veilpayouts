@@ -79,6 +79,7 @@ Honest limits: the claim amount is public via the open note (STRK20 design — m
 ## 10. Open items to re-verify at build time
 
 - **Mainnet proof blocked (eligibility):** no mainnet STRK available yet. Chasing via the sprint Telegram group / a CEX withdrawal / a builder gas grant; step-by-step runbook in `docs/MAINNET-DAY-0.md`. The three pool txs will be done through the app itself once Phase 2 ships.
+- **Sepolia STRK20 blocked — wallet-side, not app-side (2026-08-16):** every STRK20 shield attempt with the Ready wallet on Sepolia fails immediately with `UNKNOWN_ERROR` from the wallet — identical failure on our app, the official starter demo (starknet-privacy-starter.vercel.app), and the official STRK20 app (strk20.starknet.io/app). Wallet on Sepolia, 100 STRK balance, capability check passes (Wallet API ≥ 0.10.3). Suspect: Ready's Sepolia proving/screening backend. Bug report drafted for the STRK20 team (`docs/` + sprint Telegram/issue tracker). Product build proceeds — Sepolia was a rehearsal; the sprint scores mainnet only.
 
 - get-starknet 6.0.2 → 6.0.4 drift; `starknet` next is 10.7.0 (we pin 10.4.0 — confirm no STRK20 fixes we need were added later).
 - Xverse dapp-facing Wallet API status (Ready confirmed).
